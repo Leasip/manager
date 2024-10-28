@@ -29,48 +29,55 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}  # Restrict allowed file type
 
 
 def init_db():
-    conn = sqlite3.connect('casino_affiliate.db')
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS players (
-                        id INTEGER PRIMARY KEY,
-                        username TEXT NOT NULL UNIQUE,
-                        password TEXT NOT NULL,
-                        status TEXT NOT NULL,
-                        affiliate_name TEXT)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS casinos (
-                        id INTEGER PRIMARY KEY,
-                        name TEXT NOT NULL,
-                        affiliate_url TEXT,
-                        image_url TEXT,
-                        price_range_min INTEGER,
-                        price_range_max INTEGER,
-                        limit_players INTEGER)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS player_casino (
-                        player_id INTEGER,
-                        casino_id INTEGER,
-                        status TEXT,
-                        assigned_price INTEGER,
-                        screenshot TEXT,
-                        FOREIGN KEY (player_id) REFERENCES players(id),
-                        FOREIGN KEY (casino_id) REFERENCES casinos(id),
-                        UNIQUE (player_id, casino_id))''')
-    conn.commit()
-    conn.close()
+  conn = sqlite3.connect('casino_affiliate.db')
+  cursor = conn.cursor()
+  
+  # Drop existing tables if they exist
+  cursor.execute('DROP TABLE IF EXISTS player_casino')
+  cursor.execute('DROP TABLE IF EXISTS players')
+  cursor.execute('DROP TABLE IF EXISTS casinos')
+  
+  cursor.execute('''CREATE TABLE IF NOT EXISTS players (
+                      id INTEGER PRIMARY KEY,
+                      username TEXT NOT NULL UNIQUE,
+                      password TEXT NOT NULL,
+                      status TEXT NOT NULL,
+                      affiliate_name TEXT)''')
+                      
+  cursor.execute('''CREATE TABLE IF NOT EXISTS casinos (
+                      id INTEGER PRIMARY KEY,
+                      name TEXT NOT NULL,
+                      affiliate_url TEXT,
+                      image_url TEXT,
+                      price_range_min INTEGER,
+                      price_range_max INTEGER,
+                      limit_players INTEGER)''')
+                      
+  cursor.execute('''CREATE TABLE IF NOT EXISTS player_casino (
+                      player_id INTEGER,
+                      casino_id INTEGER,
+                      status TEXT,
+                      assigned_price INTEGER,
+                      screenshot TEXT,
+                      FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+                      FOREIGN KEY (casino_id) REFERENCES casinos(id) ON DELETE CASCADE,
+                      UNIQUE (player_id, casino_id))''')
+  conn.commit()
+  conn.close()
 
 
 def get_db_connection():
-    retries = 5
-    for i in range(retries):
-        try:
-            conn = sqlite3.connect('casino_affiliate.db', timeout=10, isolation_level=None)
-            conn.execute('PRAGMA foreign_keys = ON')  # Enable foreign keys
-            return conn
-        except sqlite3.OperationalError as e:
-            if 'locked' in str(e).lower() and i < retries - 1:
-                time.sleep(1)
-            else:
-                raise
-
+  retries = 5
+  for i in range(retries):
+      try:
+          conn = sqlite3.connect('casino_affiliate.db', timeout=20)
+          conn.execute('PRAGMA foreign_keys = ON')  # Enable foreign key support
+          return conn
+      except sqlite3.OperationalError as e:
+          if 'locked' in str(e).lower() and i < retries - 1:
+              time.sleep(1)
+          else:
+              raise
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -163,8 +170,17 @@ def admin_dashboard():
 
             elif action == 'delete_player':
                 player_id = request.form.get('player_id')
-                cursor.execute('DELETE FROM players WHERE id = ?', (player_id,))
-                conn.commit()
+                try:
+                    # First delete from player_casino table
+                    cursor.execute('DELETE FROM player_casino WHERE player_id = ?', (player_id,))
+                    # Then delete from players table
+                    cursor.execute('DELETE FROM players WHERE id = ?', (player_id,))
+                    conn.commit()
+                    socketio.emit('update_dashboard')
+                except sqlite3.Error as e:
+                    conn.rollback()
+                    error = f"Error deleting player: {str(e)}"
+                    print(error)  # For debugging
 
             elif action == 'edit_player':
                 player_id = request.form.get('player_id')
@@ -207,8 +223,17 @@ def admin_dashboard():
 
             elif action == 'delete_casino':
                 casino_id = request.form.get('casino_id')
-                cursor.execute('DELETE FROM casinos WHERE id = ?', (casino_id,))
-                conn.commit()
+                try:
+                    # First delete from player_casino table
+                    cursor.execute('DELETE FROM player_casino WHERE casino_id = ?', (casino_id,))
+                    # Then delete from casinos table
+                    cursor.execute('DELETE FROM casinos WHERE id = ?', (casino_id,))
+                    conn.commit()
+                    socketio.emit('update_dashboard')
+                except sqlite3.Error as e:
+                    conn.rollback()
+                    error = f"Error deleting casino: {str(e)}"
+                    print(error)  # For debugging
 
             # Handle 'confirm_payment' action
             elif action == 'confirm_payment':
