@@ -1,0 +1,117 @@
+/* Body Styling */
+body.login-page-body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(320deg, #f27121, #e94057, #8a2387);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: white;
+}
+
+/* Container for Login Form */
+.login-container {
+    background: rgba(0, 0, 0, 0.46);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 30px;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+/* Title Styling */
+.login-title {
+    font-size: 2em;
+    margin-bottom: 20px;
+    color: #fff;
+}
+
+/* Form Styling */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Input Field Styling */
+.form-input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    font-size: 1em;
+    background: rgba(255, 255, 255, 0.79);
+    border-radius: 5px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    outline: none;
+}
+
+/* Label Styling */
+.form-label {
+    font-size: 1em;
+    text-align: left;
+    color: white;
+    margin-bottom: 5px;
+}
+
+/* Button Styling */
+.submit-button {
+    background: #3498db;
+    color: #fff;
+    border: none;
+    padding: 12px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 1.1em;
+    margin-top: 10px;
+}
+
+.submit-button:hover {
+    background: #2980b9;
+}
+
+/* Error Message Styling */
+.error-message {
+    color: #e74c3c;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .login-container {
+        padding: 20px;
+        width: 90%;
+    }
+
+    .login-title {
+        font-size: 1.75em;
+    }
+
+    .form-input, .submit-button {
+        font-size: 1em;
+        padding: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-container {
+        padding: 15px;
+    }
+
+    .login-title {
+        font-size: 1.5em;
+    }
+
+    .form-input, .submit-button {
+        font-size: 0.9em;
+        padding: 8px;
+    }
+}

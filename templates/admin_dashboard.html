@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='assets/manager.ico') }}">
+
+    <script>
+        function confirmDeletion() {
+            console.log("confirmDeletion function called");
+            return confirm("Are you sure you want to delete this casino?");
+        }
+
+        function toggleVisibility(elementId) {
+            var element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = (element.style.display === "none" || element.style.display === "") ? "block" : "none";
+            }
+        }
+
+        function toggleEditPlayer(playerId = '', username = '', affiliateName = '') {
+            const editForm = document.getElementById('edit_player_form');
+            if (editForm.classList.contains('hidden')) {
+                document.getElementById('edit_player_id').value = playerId;
+                document.getElementById('edit_username').value = username;
+                document.getElementById('edit_affiliate_name').value = affiliateName;
+                editForm.classList.remove('hidden');
+            } else {
+                editForm.classList.add('hidden');
+            }
+        }
+
+        function toggleAddPlayer() {
+            const form = document.getElementById('add_player_form');
+            form.classList.toggle('hidden');
+            if (!form.classList.contains('hidden')) {
+                generatePassword();
+            }
+        }
+        function showCredentials(event) {
+            event.preventDefault();  // Prevent the form from submitting immediately
+
+            const username = document.getElementById("new_username").value;
+            const password = document.getElementById("generated_password").value;
+
+            // Display credentials in modal
+            document.getElementById("modal_username").textContent = username;
+            document.getElementById("modal_password").textContent = password;
+
+            // Show the modal
+            const modal = document.getElementById("credentialsModal");
+            modal.classList.remove("hidden");
+        }
+
+
+
+        function submitForm() {
+            // Close the modal and submit the form
+            closeModal();
+            document.getElementById("add_player_form").submit();  // Submit the form manually
+        }
+        // Function to close the modal
+        function closeModal() {
+            const modal = document.getElementById("credentialsModal");
+            modal.classList.add("hidden");
+        }
+
+        // Function to copy username and password to clipboard
+        function copyToClipboard() {
+            const username = document.getElementById("modal_username").textContent;
+            const password = document.getElementById("modal_password").textContent;
+            const textToCopy = `Username: ${username}, Password: ${password}`;
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert("Credentials copied to clipboard!");
+            }).catch(err => {
+                console.error("Error copying text: ", err);
+            });
+        }
+
+        function toggleAddCasino() {
+            toggleVisibility('add_casino_form');
+        }
+
+        function cancelEdit(elementId) {
+            var element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = "none";
+            }
+        }
+        function resetPassword(playerId, username) {
+            if (confirm('Are you sure you want to reset the password for ' + username + '?')) {
+                fetch(`/reset_password?player_id=${playerId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Password has been reset. New Password: ' + data.new_password);
+                    } else {
+                        alert('Error resetting password: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error resetting password:', error);
+                });
+            }
+        }
+        function filterCasinos() {
+            // Get the search query from the input field
+            var input = document.getElementById('searchCasino');
+            var filter = input.value.toUpperCase();
+            
+            // Get the list of casinos
+            var ul = document.querySelector('.casinos-list');
+            var li = ul.getElementsByClassName('casino-item');
+
+            // Loop through all the list items and hide those that don't match the search query
+            for (var i = 0; i < li.length; i++) {
+                var casinoNameElement = li[i].getElementsByClassName('casino-name')[0];
+                if (casinoNameElement) {
+                    var casinoName = casinoNameElement.textContent || casinoNameElement.innerText;
+                    if (casinoName.toUpperCase().indexOf(filter) > -1) {
+                        li[i].style.display = "";
+                    } else {
+                        li[i].style.display = "none";
+                    }
+                }       
+            }
+        }
+       
+        function filterPendingApprovals() {
+            // Get the search query from the input field
+            var input = document.getElementById('searchPending');
+            var filter = input.value.toUpperCase();
+
+            // Get the list of pending items
+            var ul = document.getElementById("pendingApprovalsList");
+            var li = ul.getElementsByClassName('pending-item');
+
+            // Loop through all list items and hide those that don't match the search query
+            for (var i = 0; i < li.length; i++) {
+                var playerName = li[i].querySelector('.player-name').textContent || li[i].querySelector('.player-name').innerText;
+                var casinoName = li[i].querySelector('.casino-name').textContent || li[i].querySelector('.casino-name').innerText;
+
+                if (playerName.toUpperCase().indexOf(filter) > -1 || casinoName.toUpperCase().indexOf(filter) > -1) {
+                    li[i].style.display = "";
+                } else {
+                    li[i].style.display = "none";
+                }
+            }
+        }
+
+    
+
+        // Search Functionality for Player List
+        function filterPlayers() {
+            const searchValue = document.getElementById('searchPlayer').value.toLowerCase();
+            const affiliateValue = document.getElementById('affiliateFilter').value.toLowerCase();
+            const playersList = document.getElementById('playersList');
+            const players = playersList.getElementsByClassName('player-item');
+
+            for (let i = 0; i < players.length; i++) {
+                const playerName = players[i].getElementsByClassName('player-name')[0].textContent.toLowerCase();
+                const affiliateElement = players[i].getElementsByClassName('affiliate-name')[0];
+                const affiliateName = affiliateElement ? affiliateElement.textContent.toLowerCase() : '';
+
+                if (playerName.includes(searchValue) && (affiliateName.includes(affiliateValue) || affiliateValue === '')) {
+                    players[i].style.display = '';
+                } else {
+                    players[i].style.display = 'none';
+                }
+            }
+        }
+        function toggleEditCasino(casinoId) {
+            var editForm = document.getElementById('edit_form_' + casinoId);
+            var editButton = document.getElementById('edit_button_' + casinoId);
+            
+            if (editForm.classList.contains('hidden')) {
+                editForm.classList.remove('hidden');
+                editButton.innerText = 'Close Edit';
+            } else {
+                editForm.classList.add('hidden');
+                editButton.innerText = 'Edit';
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            var socket = io();
+            socket.on('update_dashboard', function() {
+                window.location.href = window.location.href.split('?')[0];
+            });
+        });
+    </script>
+    <script>
+        function toggleAddPlayer() {
+            const form = document.getElementById('add_player_form');
+            form.classList.toggle('hidden');
+            if (!form.classList.contains('hidden')) {
+                generatePassword();
+            }
+        }
+    
+        function generatePassword() {
+            const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let password = '';
+            for (let i = 0; i < 8; i++) {
+                const randomIndex = Math.floor(Math.random() * charset.length);
+                password += charset[randomIndex];
+            }
+            document.getElementById('generated_password').value = password;
+        }
+    
+        function showPassword(playerId, username) {
+            const passwordElement = document.getElementById('password_' + playerId);
+            fetch(`/get_password?username=${username}`)
+                .then(response => response.json())
+                .then(data => {
+                    passwordElement.textContent = data.password;
+                    passwordElement.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error fetching password:', error);
+                });
+        }
+    </script>
+</head>
+<body class="admin-dashboard">
+    <div class="container">
+        <header class="dashboard-header">
+            <h1 class="dashboard-title">Admin Dashboard</h1>
+            <a href="/logout" class="logout-button">Logout</a>
+        </header>
+
+       <!-- Players Section -->
+        <section class="players-section">
+            <div class="section-header">
+                <h3 class="section-title">Players</h3>
+                <button class="toggle-button" onclick="toggleAddPlayer()">Add Player</button>
+            </div>
+            {% if error %}
+                <div class="error-message">{{ error }}</div>
+            {% endif %}
+            <div class="search-container">
+                <input type="text" id="searchPlayer" placeholder="Search Players..." onkeyup="filterPlayers()" class="form-input">
+                <input type="text" id="affiliateFilter" placeholder="Filter by Affiliate..." onkeyup="filterPlayers()" class="form-input">
+            </div>
+            <form method="post" id="add_player_form" class="add-player-form hidden" onsubmit="showCredentials(event)">
+                <input type="hidden" name="action" value="add_player">
+                <h3 class="form-title">Add Player</h3>
+                <input type="text" name="username" id="new_username" placeholder="Username" required class="form-input"><br>
+                <input type="text" name="password" id="generated_password" placeholder="Password" required class="form-input" readonly><br>
+                <input type="text" name="affiliate_name" placeholder="Affiliate Name" class="form-input"><br>
+                <div class="button-group">
+                    <button type="submit" class="submit-button">Add Player</button>
+                    <button type="button" class="cancel-button" onclick="toggleAddPlayer()">Cancel</button>
+                </div>
+            </form>
+            
+            <!-- Modal for Showing Credentials -->
+            <div id="credentialsModal" class="modal hidden">
+                <div class="modal-content">
+                    <span class="close-button" onclick="closeModal()">&times;</span>
+                    <h3>Player Created!</h3>
+                    <p><strong>Username:</strong> <span id="modal_username"></span></p>
+                    <p><strong>Password:</strong> <span id="modal_password"></span></p>
+                    <button onclick="copyToClipboard()" class="copy-button">Copy to Clipboard</button>
+                    <button onclick="submitForm()" class="copy-button">Close and Submit</button> <!-- This button submits the form -->
+                </div>
+            </div>
+            
+            
+            
+            
+
+            <div class="players-list-container" style="max-height: 400px; overflow-y: auto;">
+                <ul class="players-list" id="playersList">
+                    {% if players %}
+                        {% for player in players %}
+                        <li class="player-item">
+                            <div class="casino-info">
+                                <a href="/player_info/{{ player[0] }}" class="player-name"><strong>{{ player[1] }}</strong></a>
+                                {% if player[4] %}
+                                    <span class="affiliate-name">Affiliate: {{ player[4] }}</span>
+                                {% endif %}
+                                <div class="player-actions">
+                                    <button onclick="window.location.href='/player_info/{{ player[0] }}'" class="info-button">Info</button>
+                                    <button onclick="resetPassword('{{ player[0] }}', '{{ player[1] }}')" class="reset-password-button">Reset Password</button>
+                                    <form method="post" style="display:inline;" onsubmit="return confirmDeletePlayer();" class="delete-player-form">
+                                        <input type="hidden" name="player_id" value="{{ player[0] }}">
+                                        <button type="submit" name="action" value="delete_player" class="delete-button">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="no-players-message">No players found.</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </section>
+
+    
+    
+
+
+    <!-- Pending Approvals Section -->
+    <!-- Pending Approvals Section -->
+    <section class="pending-approvals-section">
+        <div class="section-header">
+            <h3 class="section-title">Pending Approvals</h3>
+            <!-- Search Bar -->
+            <input type="text" id="searchPending" placeholder="Search pending approvals..." class="form-input" onkeyup="filterPendingApprovals()">
+        </div>
+        <div class="pending-approvals-container" style="max-height: 400px; overflow-y: auto;">
+            <ul class="pending-approvals-list" id="pendingApprovalsList">
+                {% if pending_casinos %}
+                    {% for pending in pending_casinos %}
+                        <li class="pending-item">
+                            <div class="pending-info">
+                                <strong class="player-name">{{ pending[5] }}</strong><br>
+                                <strong class="casino-name">{{ pending[6] }}</strong><br>
+                                <strong>Status: {{ pending[2] }}</strong><br>
+                                <strong>Assigned Price: €{{ pending[4] }}</strong><br>
+                                {% if pending[3] %}
+                                    <a href="{{ url_for('static', filename='uploads/' ~ pending[3]) }}" target="_blank" class="screenshot-link">View Screenshot</a><br>
+                                {% endif %}
+                                <form method="post" action="/admin" class="approval-form">
+                                    <input type="hidden" name="player_id" value="{{ pending[0] }}">
+                                    <input type="hidden" name="casino_id" value="{{ pending[1] }}">
+                                    <div class="button-group">
+                                        {% if pending[2] == 'pending_payment' %}
+                                            <button type="submit" name="action" value="confirm_payment" class="confirm-button">Payment Done</button>
+                                        {% endif %}
+                                        {% if pending[2] == 'pending_approval' and pending[3] %}
+                                            <button type="submit" name="action" value="approve_screenshot" class="approve-button">Approve Screenshot</button>
+                                        {% endif %}
+                                    </div>
+                                </form>
+                            </div>
+                        </li>
+                    {% endfor %}
+                {% else %}
+                    <li class="no-approvals-message">No pending approvals available at the moment.</li>
+                {% endif %}
+            </ul>
+        </div>
+    </section>
+
+
+
+        <!-- Manage Casinos Section -->
+        <section class="manage-casinos-section">
+            <div class="section-header">
+                <h3 class="section-title">Manage Casinos</h3>
+                <button class="toggle-button" onclick="toggleAddCasino()">Add Casino</button>
+            </div>
+            <div class="search-container">
+                <input type="text" id="searchCasino" placeholder="Search Casinos..." onkeyup="filterCasinos()" class="form-input">
+            </div>
+            <form method="post" id="add_casino_form" class="add-casino-form hidden">
+                <h3 class="form-title">Add Casino</h3>
+                <input type="text" name="name" placeholder="Casino Name" required class="form-input"><br>
+                <input type="text" name="affiliate_url" placeholder="Affiliate URL" required class="form-input"><br>
+                <input type="text" name="image_url" placeholder="Image URL" required class="form-input"><br>
+                <input type="text" name="price_range_min" placeholder="Price Range Min (€)" required class="form-input"><br>
+                <input type="text" name="price_range_max" placeholder="Price Range Max (€)" required class="form-input"><br>
+                <input type="number" name="limit_players" placeholder="Limit of Players" required class="form-input"><br>
+                <div class="button-group">
+                    <button type="submit" name="action" value="add_casino" class="submit-button">Add Casino</button>
+                    <button type="button" class="cancel-button" onclick="toggleAddCasino()">Cancel</button>
+                </div>
+            </form>
+            <ul class="casinos-list" style="max-height: 400px; overflow-y: auto;">
+                {% if casinos %}
+                    {% for casino in casinos %}
+                    <li class="casino-item">
+                        <div class="casino-info">
+                            <div class="casino-details">
+                                <strong class="casino-name">{{ casino[1] }}</strong>
+                            </div>
+                            <div class="button-group-container">
+                                <button id="edit_button_{{ casino[0] }}" onclick="toggleEditCasino({{ casino[0] }})" class="edit-button">Edit</button>
+                                <form method="post" class="delete-casino-form" onsubmit="return confirmDeletion();" style="display:inline;">
+                                    <input type="hidden" name="casino_id" value="{{ casino[0] }}">
+                                    <button type="submit" name="action" value="delete_casino" class="deletee-button">Delete Casino</button>
+                                </form>
+                            </div>
+                            <form method="post" id="edit_form_{{ casino[0] }}" class="edit-casino-form hidden">
+                                <input type="hidden" name="casino_id" value="{{ casino[0] }}">
+                                <label for="new_name_{{ casino[0] }}" class="form-label">Name:</label>
+                                <input type="text" id="new_name_{{ casino[0] }}" name="new_name" value="{{ casino[1] }}" required class="form-input"><br>
+                                <label for="new_affiliate_url_{{ casino[0] }}" class="form-label">Affiliate URL:</label>
+                                <input type="text" id="new_affiliate_url_{{ casino[0] }}" name="new_affiliate_url" value="{{ casino[2] }}" required class="form-input"><br>
+                                <label for="new_image_url_{{ casino[0] }}" class="form-label">Image URL:</label>
+                                <input type="text" id="new_image_url_{{ casino[0] }}" name="new_image_url" value="{{ casino[3] }}" required class="form-input"><br>
+                                <label for="new_price_range_min_{{ casino[0] }}" class="form-label">Price Range Min (€):</label>
+                                <input type="text" id="new_price_range_min_{{ casino[0] }}" name="new_price_range_min" value="{{ casino[4] }}" required class="form-input"><br>
+                                <label for="new_price_range_max_{{ casino[0] }}" class="form-label">Price Range Max (€):</label>
+                                <input type="text" id="new_price_range_max_{{ casino[0] }}" name="new_price_range_max" value="{{ casino[5] }}" required class="form-input"><br>
+                                <label for="new_limit_players_{{ casino[0] }}" class="form-label">Limit of Players:</label>
+                                <input type="number" id="new_limit_players_{{ casino[0] }}" name="new_limit_players" value="{{ casino[6] }}" required class="form-input"><br>
+                                <div class="button-group">
+                                    <button type="submit" name="action" value="edit_casino" class="save-button">Save Changes</button>
+                                    <button type="button" class="cancel-button" onclick="toggleEditCasino({{ casino[0] }})">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                {% else %}
+                    <li class="no-casinos-message">No casinos available.</li>
+                {% endif %}
+            </ul>
+            
+        </section>
+    </div>
+</body>
+</html>
