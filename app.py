@@ -432,4 +432,4 @@ def player_info(player_id):
 
 if __name__ == '__main__':
     init_db()
-    socketio.run(app, host='0.0.0.0', port=5001, debug=False)  # Remove debug=True in production
+    socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True)  # Remove debug=True in production
